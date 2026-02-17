@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ejecución Presupuestaria UCM - Visualización Interactiva</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8e8e8 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #b71234 0%, #8b0d27 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 28px; font-weight: 600; margin-bottom: 10px; }
+        .header p  { font-size: 16px; opacity: 0.95; }
+
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .control-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-item { display: flex; flex-direction: column; }
+
+        .control-item label {
+            font-weight: 600;
+            color: #2f2f2f;
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-item select {
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 15px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .control-item select:hover  { border-color: #b71234; }
+        .control-item select:focus  { outline: none; border-color: #b71234; box-shadow: 0 0 0 3px rgba(183,18,52,0.1); }
+
+        .view-toggles { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .view-toggle {
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 20px;
+            border: 2px solid #dee2e6;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        .view-toggle:hover  { border-color: #b71234; background: #fff5f7; }
+        .view-toggle.active { background: #b71234; color: white; border-color: #b71234; }
+
+        .download-section {
+            padding: 20px 30px;
+            background: #fff;
+            border-bottom: 2px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .download-section h3 { font-size: 16px; color: #2f2f2f; margin-right: 10px; flex-shrink: 0; }
+
+        .download-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #9B8942 0%, #8a7a3a 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .download-btn:hover  { background: linear-gradient(135deg, #b5a363 0%, #9B8942 100%); box-shadow: 0 4px 12px rgba(155,137,66,0.3); transform: translateY(-2px); }
+        .download-btn:active { transform: translateY(0); }
+        .download-btn svg    { width: 16px; height: 16px; }
+
+        .chart-container {
+            padding: 30px;
+            position: relative;
+            height: 600px;
+        }
+
+        /* ── TABLA DE DATOS ── */
+        .data-table-section {
+            padding: 0 30px 24px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .data-table-section h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #2f2f2f;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 20px 0 12px;
+        }
+        .data-table-wrap {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            background: white;
+        }
+        .data-table thead {
+            background: linear-gradient(135deg, #b71234 0%, #8b0d27 100%);
+        }
+        .data-table thead th {
+            padding: 10px 14px;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            text-align: left;
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+        .data-table thead th.num { text-align: right; }
+        .data-table tbody td {
+            padding: 8px 14px;
+            border-bottom: 1px solid #e9ecef;
+            white-space: nowrap;
+        }
+        .data-table tbody td.num {
+            text-align: right;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12.5px;
+        }
+        .data-table tbody td.neg { color: #b71234; }
+        .data-table tbody tr:hover { background: #fff5f7; }
+        .data-table tbody tr:nth-child(even) { background: #fafafa; }
+        .data-table tbody tr:nth-child(even):hover { background: #fff0f3; }
+        .data-table tfoot tr td {
+            padding: 9px 14px;
+            font-weight: 700;
+            background: #f0ece4;
+            border-top: 2px solid #dee2e6;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 12.5px;
+        }
+        .data-table tfoot tr td:first-child {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 13px;
+        }
+        .data-table tfoot tr td.num { text-align: right; }
+
+        .data-table-section h4 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 18px 0 10px;
+            border-top: 1px solid #dee2e6;
+            margin-top: 6px;
+        }
+        .data-table-section h4:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+
+        .footer {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-top: 2px solid #e9ecef;
+            color: #6c757d;
+            text-align: center;
+            font-size: 13px;
+        }
+        .footer a { color: #b71234; text-decoration: none; font-weight: 600; }
+        .footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 22px; }
+            .control-group { grid-template-columns: 1fr; }
+            .chart-container { height: 400px; padding: 20px; }
+            .download-section { flex-direction: column; align-items: stretch; }
+            .download-btn { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>📊 Ejecución Presupuestaria — Universidad Complutense de Madrid</h1>
+        <p>Visualización interactiva de ingresos y gastos por trimestre</p>
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+
+            <div class="control-item">
+                <label for="year-select">Año</label>
+                <select id="year-select">
+                    <option value="2025" selected>2025</option>
+                    <option value="2024">2024</option>
+                    <option value="2023">2023</option>
+                    <option value="2022">2022</option>
+                </select>
+            </div>
+
+            <div class="control-item">
+                <label for="trimestre-select">Trimestre</label>
+                <select id="trimestre-select">
+                    <option value="1T">1.er Trimestre</option>
+                    <option value="2T">2.º Trimestre</option>
+                    <option value="3T" selected>3.er Trimestre</option>
+                    <option value="4T">4.º Trimestre</option>
+                </select>
+            </div>
+
+            <div class="control-item">
+                <label for="tipo-select">Tipo de datos</label>
+                <select id="tipo-select">
+                    <option value="ingresos" selected>Ingresos — Derechos reconocidos</option>
+                    <option value="gastos">Gastos — Obligaciones reconocidas</option>
+                </select>
+            </div>
+
+        </div>
+
+        <div class="control-item">
+            <label>Vista de gráfico</label>
+            <div class="view-toggles">
+                <button class="view-toggle active" data-view="bar">📊 Barras por mes</button>
+                <button class="view-toggle" data-view="line">📈 Evolución temporal</button>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="download-section">
+        <h3>📥 Descargar datos:</h3>
+        <button class="download-btn" id="btnCSV">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            Trimestre actual (CSV)
+        </button>
+        <button class="download-btn" id="btnXLSX">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 17l2-3-2-3h1.5l1.25 1.9L14 11h1.5l-2 3 2 3H14l-1.25-1.9L11.5 17H8z"/></svg>
+            Trimestre actual (Excel)
+        </button>
+        <button class="download-btn" id="btnCSVTodos">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            Todos los trimestres (CSV)
+        </button>
+    </div>
+
+    <div class="data-table-section">
+        <h3 id="tableTitle">Datos del trimestre</h3>
+
+        <h4 id="tableSubtitle1">Por capítulo presupuestario</h4>
+        <div class="data-table-wrap">
+            <table class="data-table" id="dataTable">
+                <thead id="dataTableHead"></thead>
+                <tbody id="dataTableBody"></tbody>
+                <tfoot id="dataTableFoot"></tfoot>
+            </table>
+        </div>
+
+        <h4 id="tableSubtitle2">Por tipo de operación</h4>
+        <div class="data-table-wrap">
+            <table class="data-table" id="dataTableOps">
+                <thead id="dataTableOpsHead"></thead>
+                <tbody id="dataTableOpsBody"></tbody>
+                <tfoot id="dataTableOpsFoot"></tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="mainChart"></canvas>
+    </div>
+
+    <div class="footer">
+        Datos facilitados por la <a href="https://www.ucm.es/directorio/?eid=962" target="_blank" rel="noopener">Vicegerencia Económica</a> ·
+        <a href="https://www.ucm.es/portaldetransparencia" target="_blank" rel="noopener">Portal de Transparencia — Universidad Complutense de Madrid</a>
+    </div>
+
+</div>
+<script>
+// ══════════════════════════════════════════════════════════════
+//  PALETA UCM
+// ══════════════════════════════════════════════════════════════
+const UCM = {
+    rojo:   '#b71234',
+    gris:   '#979492',
+    dorado: '#9B8942',
+    sec: ['#b71234','#979492','#9B8942','#7a0e29','#c84a5f','#6b6967','#b4b1ae','#8a7a3a','#b5a363','#5a0920']
+};
+
+// ══════════════════════════════════════════════════════════════
+//  BASE DE DATOS
+//  Valores exactos extraídos de los archivos XLSX publicados
+//  en el Portal de Transparencia de la UCM.
+//  Cada cifra corresponde al mes indicado (no son acumulados).
+//  Capítulos GASTOS:   I · II · III · IV · VI · VII · VIII · IX
+//  Capítulos INGRESOS: III · IV · V · VI · VII · VIII · IX
+// ══════════════════════════════════════════════════════════════
+const DB = {
+  // ────────────────────────────────────────────────────────────
+  //  2025  (1T–3T publicados; 4T pendiente)
+  // ────────────────────────────────────────────────────────────
+  2025: {
+    "1T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [2440081.00,   -1009753.95, 170632.66,  0.00,       -83198.47,  77099.95,  0.00],
+          "Febrero": [6462899.57,   61777259.61, 1939873.38, 31163.88,   6143436.97, 159795.71, 0.00],
+          "Marzo":   [10106219.08,  95316195.14, 2287422.53, 27756.84,   8683346.14, 249605.25, 0.00]
+        },
+        agrup: { corriente:[1600959.71,70180032.56,107709836.75], capital:[-83198.47,6174600.85,8711102.98], financiero:[77099.95,159795.71,249605.25] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [35604856.89,  584975.24,   32394.91,  130456.35,  6770.56,     124197.18,  200000.00, 0.00],
+          "Febrero": [71171554.05,  6368595.88,  37560.65,  288463.30,  2750417.58,  124197.18,  200000.00, 0.00],
+          "Marzo":   [107032093.17, 14647056.70, 188372.45, 724824.29,  19372887.92, 1254352.30, 200000.00, 43745.58]
+        },
+        agrup: { corriente:[36352683.39,77866173.88,122592346.61], capital:[130967.74,2874614.76,20627240.22], financiero:[200000.00,200000.00,243745.58] }
+      }
+    },
+    "2T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Abril","Mayo","Junio"],
+        datos: {
+          "Abril": [12056529.44, 127087371.86, 2868056.05, 253005.72,  19445579.03, 332873.55,  10000.00],
+          "Mayo":  [16137514.73, 160909276.43, 3349759.71, 105329.01,  25360585.38, 419058.08, -14491.57],
+          "Junio": [20773819.08, 193190266.64, 3760584.85, 266749.06,  27366643.75, 515378.39, -14491.57]
+        },
+        agrup: { corriente:[142011957.35,180396550.87,217724670.57], capital:[19698584.75,25465914.39,27633392.81], financiero:[342873.55,404566.51,500886.82] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Abril","Mayo","Junio"],
+        datos: {
+          "Abril": [142851816.90, 19988996.88, 329397.89, 2167949.76, 30109228.33, 4229265.14, 200000.00,  53745.58],
+          "Mayo":  [179314772.35, 24246206.26, 368912.31, 2764892.40, 40925040.56, 4338846.84, 462392.23,  53745.58],
+          "Junio": [236618000.00, 29657000.00, 508000.00, 4118000.00, 58192000.00, 4351000.00, 462000.00, 100000.00]
+        },
+        agrup: { corriente:[165338161.43,206694783.32,270901000.00], capital:[34338493.47,45263887.40,62543000.00], financiero:[253745.58,516137.81,562000.00] }
+      }
+    },
+    "3T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Julio","Agosto","Septiembre"],
+        datos: {
+          "Julio":      [24832268.02, 227823315.79, 4672150.53, 295555.42, 31212209.47, 598813.87, 5508.43],
+          "Agosto":     [24856606.51, 259573928.05, 4698790.58, 295555.42, 31592379.44, 598813.87, 5508.43],
+          "Septiembre": [29752308.18, 323371070.84, 5210491.06, 335653.57, 34591915.25, 772838.83, 5508.43]
+        },
+        agrup: { corriente:[257327734.34,289129325.14,358333870.08], capital:[31507764.89,31887934.86,34927569.82], financiero:[604322.30,604322.30,778347.26] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Julio","Agosto","Septiembre"],
+        datos: {
+          "Julio":      [272933000.00, 35078000.00, 657953.93, 5495000.00, 66095000.00, 5247380.17, 749371.66,  99763.68],
+          "Agosto":     [309259162.75, 37399274.94, 659159.75, 5848677.88, 70293591.16, 5247380.17, 749371.66,  99763.68],
+          "Septiembre": [347837998.10, 44607015.74, 697018.41, 7343974.74, 85463913.73, 5253320.17, 749371.66, 510876.44]
+        },
+        agrup: { corriente:[314163953.93,353166275.32,400486006.99], capital:[71342380.17,75540971.33,90717233.90], financiero:[849135.34,849135.34,1260248.10] }
+      }
+    }
+  },
+
+  // ────────────────────────────────────────────────────────────
+  //  2024  (completo, 1T–4T)  — Fuente: XLSX Portal Transparencia
+  // ────────────────────────────────────────────────────────────
+  2024: {
+    "1T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [2248166.98,  21155.39,    438761.56,  0.00,       -369289.14,  75396.35,  10000.00],
+          "Febrero": [5304729.93,  61945085.64, 2168934.00, 0.00,       -477058.88, 149312.59,  10000.00],
+          "Marzo":   [7913614.02,  93184068.62, 2905544.07, 101925.01,  2793770.11, 223628.25,  10000.00]
+        },
+        agrup: { corriente:[2708083.93,69418749.57,104003226.71], capital:[-369289.14,-477058.88,2895695.12], financiero:[85396.35,159312.59,233628.25] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [34514726.25, 119381.82,   18175.56,  15000.00,   0.00,        0.00,      100000.00,     0.00],
+          "Febrero": [69222680.98, 5883124.88,  27024.68,  706426.69,  2241241.66,  0.00,      200000.00, 57133.60],
+          "Marzo":   [106565519.69,10775234.47, 39540.52,  1878778.31, 10419823.03, 69170.94,  200000.00, 57133.60]
+        },
+        agrup: { corriente:[34667283.63,75839257.23,119259072.99], capital:[0.00,2241241.66,10488993.97], financiero:[100000.00,257133.60,257133.60] }
+      }
+    },
+    "2T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Abril","Mayo","Junio"],
+        datos: {
+          "Abril": [10849000.26, 125686999.86, 4034000.33, 108999.24,  4963999.67, 311042.93,  9419.13],
+          "Mayo":  [13991861.30, 156639500.05, 4447689.69, 145242.44, 11664531.99, 397119.19, -12001.56],
+          "Junio": [18921755.11, 187732272.94, 5161052.09, 146127.42, 21758385.27, 486212.78,  -2442.50]
+        },
+        agrup: { corriente:[140570000.45,175079051.04,211815080.14], capital:[5072998.91,11809774.43,21904512.69], financiero:[320462.06,385117.63,483770.28] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Abril","Mayo","Junio"],
+        datos: {
+          "Abril": [141770027.72, 17871999.83, 108969.17, 2466999.36, 14709999.04, 264585.94, 400000.00,  67133.60],
+          "Mayo":  [177822303.15, 23646843.71, 214773.63, 2984086.77, 24038115.35, 565247.50, 489957.53,  67133.60],
+          "Junio": [233903128.27, 28722598.77, 217497.05, 4413228.95, 33552723.03, 565247.50, 487769.54,  67133.60]
+        },
+        agrup: { corriente:[162217996.08,204668007.26,267256453.04], capital:[14974584.98,24603362.85,34117970.53], financiero:[467133.60,557091.13,554903.14] }
+      }
+    },
+    "3T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Julio","Agosto","Septiembre"],
+        datos: {
+          "Julio":      [21899955.63, 219742401.39, 5884538.21, 146168.96, 28033824.64, 567671.45, -2442.50],
+          "Agosto":     [22183000.75, 252166694.66, 5898627.85, 146896.29, 28193386.29, 643333.70, -2442.50],
+          "Septiembre": [39582927.02, 284092949.59, 6351755.26, 164622.57, 34806740.65, 721483.50,  5219.72]
+        },
+        agrup: { corriente:[247526895.23,280248323.26,330027631.87], capital:[28179993.60,28340282.58,34971363.22], financiero:[565228.95,640891.20,726703.22] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Julio","Agosto","Septiembre"],
+        datos: {
+          "Julio":      [269782532.14, 34059087.58, 394291.76, 4635855.80, 49648125.96, 608403.01, 585078.28,  885042.65],
+          "Agosto":     [305882738.56, 38755030.85, 399514.54, 4737579.80, 56768465.93, 608403.01, 744383.52,  885042.65],
+          "Septiembre": [350690105.92, 46315002.06, 431932.07, 6036532.57, 74239611.93, 868850.21, 746783.52, 1271632.31]
+        },
+        agrup: { corriente:[308871767.28,349774863.75,403473572.62], capital:[50256528.97,57376868.94,75108462.14], financiero:[1470120.93,1629426.17,2018415.83] }
+      }
+    },
+    "4T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Octubre","Noviembre","Diciembre"],
+        datos: {
+          "Octubre":   [47452986.91, 321662978.96, 7479455.70, 253979.97, 40043082.92, 804568.41,  -15140.35],
+          "Noviembre": [56522798.52, 353608041.78, 8058171.02, 317999.92, 45068681.62, 881415.63,   84524.05],
+          "Diciembre": [132138982.26,410639420.36, 8632925.54, 426738.39, 76259666.06, 963688.21, 4522129.05]
+        },
+        agrup: { corriente:[376595421.57,418189011.32,551411328.16], capital:[40297062.89,45386681.54,76686404.45], financiero:[789428.06,965939.68,5485817.26] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Octubre","Noviembre","Diciembre"],
+        datos: {
+          "Octubre":   [390818967.91, 52944313.88, 445028.39,  9804816.07, 89087270.96, 868850.21,  846711.91, 1271632.31],
+          "Noviembre": [414933236.71, 60521000.78, 510257.91, 11076959.80,101324813.19, 868850.21,  985049.43, 1381319.91],
+          "Diciembre": [483860634.98, 72304319.38, 742544.12, 15507473.23,129448046.66,4056912.45, 1132096.30, 3314745.10]
+        },
+        agrup: { corriente:[454013126.25,487041455.20,572414971.71], capital:[89956121.17,102193663.40,133504959.11], financiero:[2118344.22,2366369.34,4446841.40] }
+      }
+    }
+  },
+
+  // ────────────────────────────────────────────────────────────
+  //  2023  (completo, 1T–4T)  — Fuente: XLSX Portal Transparencia
+  // ────────────────────────────────────────────────────────────
+  2023: {
+    "1T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [1792000.00,  29473573.00, 510420.87,     0.00, 1124206.38,      0.00, 77000.00],
+          "Febrero": [4933548.81,  59343663.67, 1971393.04,    0.00,  189017.26, 163000.00,     0.00],
+          "Marzo":   [9080343.10,  89572076.82, 2230058.96,    0.00, 1675426.84, 254000.00,     0.00]
+        },
+        agrup: { corriente:[31775994.54,66248506.63,100882478.88], capital:[1124206.38,189017.26,1675426.84], financiero:[77000.00,163000.00,254000.00] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [34337716.03, 416385.60,   49213.52,  167902.99,    28119.73,       0.00, 100000.00,     0.00],
+          "Febrero": [67861893.37, 7899107.41,  86674.06,  759528.76,  2424266.42, 2686798.85, 200000.00, 48240.81],
+          "Marzo":   [102520725.22,16885203.78, 125509.20, 1175101.74,  9135998.46, 6956162.89, 199785.48, 68240.92]
+        },
+        agrup: { corriente:[34971218.14,76607203.60,120706539.94], capital:[28119.73,5111065.27,16092161.35], financiero:[100000.00,248240.81,268026.40] }
+      }
+    },
+    "2T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Abril","Mayo","Junio"],
+        datos: {
+          "Abril": [10997263.98, 127314524.12, 2906519.58,  22112.83,  5478975.46, 336000.00,     0.00],
+          "Mayo":  [13446246.78, 157478511.30, 3376251.14, 419226.14, 11752800.26, 422359.80, 10000.00],
+          "Junio": [16145073.23, 188739000.85, 3735446.98, 501709.93, 14547541.78, 510143.36, 34587.39]
+        },
+        agrup: { corriente:[141218307.68,174301009.22,208619521.06], capital:[5501088.29,12172026.40,15049251.71], financiero:[336000.00,432359.80,544730.75] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Abril","Mayo","Junio"],
+        datos: {
+          "Abril": [136938460.02, 21913860.94, 142127.43, 1663673.08, 19288693.62, 7357370.89, 387725.45, 1167260.88],
+          "Mayo":  [172545610.46, 28906658.16, 183352.40, 2041394.42, 34084113.48, 7357370.89, 387725.45, 1174210.88],
+          "Junio": [227151055.17, 34900292.54, 237236.78, 3600891.24, 37789647.04, 7414944.59, 487725.45, 1174210.88]
+        },
+        agrup: { corriente:[160658121.47,203677015.44,265889475.73], capital:[26646064.51,41441484.37,45204591.63], financiero:[1554986.33,1561936.33,1661936.33] }
+      }
+    },
+    "3T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Julio","Agosto","Septiembre"],
+        datos: {
+          "Julio":      [20613218.01, 219497513.23, 4694034.39, 584770.14, 22136079.53, 592773.05, 34587.39],
+          "Agosto":     [20482350.18, 248854176.90, 4702588.83, 582939.05, 22305469.51, 666057.87, 34587.39],
+          "Septiembre": [39306000.00, 278380235.82, 5421707.11, 582939.05, 34886096.79, 748560.50, 45200.00]
+        },
+        agrup: { corriente:[244804665.63,274039115.91,323107942.93], capital:[22720849.67,22888408.56,35469035.84], financiero:[627360.44,700645.26,793760.50] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Julio","Agosto","Septiembre"],
+        datos: {
+          "Julio":      [256531982.52, 41192747.77, 248556.33, 4193950.86, 57011890.78, 7615644.59, 632328.34, 1174210.88],
+          "Agosto":     [297256435.93, 43520915.21, 248980.29, 5133615.89, 57954894.01, 7615661.09, 632328.34, 1174210.88],
+          "Septiembre": [333810802.31, 51244068.10, 300107.95, 5671296.25, 68082048.96, 8244223.49, 731523.58, 1556329.75]
+        },
+        agrup: { corriente:[302167237.48,346159947.32,391026274.61], capital:[64627051.87,65570055.10,76326272.45], financiero:[1806539.22,1806539.22,2287853.33] }
+      }
+    },
+    "4T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Octubre","Noviembre","Diciembre"],
+        datos: {
+          "Octubre":   [46854818.81, 313435232.21, 6749512.89, 624727.03, 47238700.75, 831710.75,   44587.39],
+          "Noviembre": [54186914.95, 350878627.56, 7262190.54, 741865.90, 57289868.41, 909058.50,   54587.39],
+          "Diciembre": [128578817.79,404641390.78, 8377204.43, 866605.99, 79923309.92, 982378.39,  871039.71]
+        },
+        agrup: { corriente:[367039563.91,412327733.05,541597413.00], capital:[47863427.78,58031734.31,80789915.91], financiero:[876298.14,963645.89,1853418.10] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Octubre","Noviembre","Diciembre"],
+        datos: {
+          "Octubre":   [365640601.53, 57233092.93, 316238.46,  6888720.95,  80399683.65, 8244223.49,  868208.21, 1561329.75],
+          "Noviembre": [397388896.33, 64858176.13, 574746.54, 10859500.77,  92778244.54,10562142.69, 1039125.92, 1670652.34],
+          "Diciembre": [464927940.83, 77589068.90, 618296.21, 15376346.53, 116905932.46,11465431.90, 1038649.04, 1670652.34]
+        },
+        agrup: { corriente:[430078653.87,462821819.00,558511652.47], capital:[88643907.14,103340387.23,128371364.36], financiero:[2429537.96,2709778.26,2709301.38] }
+      }
+    }
+  },
+
+  // ────────────────────────────────────────────────────────────
+  //  2022  (completo, 1T–4T)  — Fuente: Portal Transparencia UCM
+  // ────────────────────────────────────────────────────────────
+  2022: {
+    "1T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [1607018.60,  29356663.67, 114346.10,      0.00,    -89388.49, 71000.00,     0.00],
+          "Febrero": [4936226.59,  59213788.86, 892300.59,      0.00,    48410.71, 140912.66,     7.15],
+          "Marzo":   [8423444.08,  89452934.14, 1947858.85, 59845.26,  3944698.41, 212492.56,     0.00]
+        },
+        agrup: { corriente:[31078028.37,65042316.04,99824237.07], capital:[-89388.49,48410.71,4004543.67], financiero:[71000.00,140919.81,212492.56] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [30798620.50,  349676.24,  34048.56,       0.00, 1066430.67,  716712.94, 100000.00,  2278.16],
+          "Febrero": [62609674.60, 6543942.78,  40786.86, 2405303.99, 3622585.85, 1203454.05, 100000.00,  2278.16],
+          "Marzo":   [93683287.99,12415456.25,  53197.49, 3025404.88, 9669788.59, 1338249.95, 198006.82, 50518.97]
+        },
+        agrup: { corriente:[31182345.30,71599708.23,109177346.61], capital:[1783143.61,4826039.90,11008038.54], financiero:[102278.16,102278.16,248525.79] }
+      }
+    },
+    "2T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Abril","Mayo","Junio"],
+        datos: {
+          "Abril": [11440593.93, 119472736.99, 2292016.12, 143179.85, 19877265.58, 289675.40, 15007.15],
+          "Mayo":  [13851135.14, 149403238.23, 2524530.86, 143179.85, 26271154.91, 373344.23, 15000.00],
+          "Junio": [15580062.78, 180852605.06, 2818929.15, 148252.79, 27364957.02, 451651.52, 16957.15]
+        },
+        agrup: { corriente:[133205347.00,165778904.23,199251596.99], capital:[20020445.43,26414334.76,27513209.81], financiero:[304682.55,388344.23,468608.67] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Abril","Mayo","Junio"],
+        datos: {
+          "Abril": [125489270.96, 18113080.70,  97505.03, 3527025.78, 16386857.75, 1338249.95, 198006.82, 50518.97],
+          "Mayo":  [157571822.46, 24237246.79, 125661.38, 4687969.70, 27575639.60, 1348497.07, 399349.01, 50518.97],
+          "Junio": [208294207.93, 29794722.57, 147352.55, 5323642.37, 33496869.90, 1348497.07, 498599.93, 50518.97]
+        },
+        agrup: { corriente:[147226882.47,186622700.33,243559925.42], capital:[17725107.70,28924136.67,34845366.97], financiero:[248525.79,449867.98,549118.90] }
+      }
+    },
+    "3T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Julio","Agosto","Septiembre"],
+        datos: {
+          "Julio":      [29569501.03, 211018593.33, 3202668.30, 158660.71, 28433912.03, 535693.83, 26447.15],
+          "Agosto":     [29749025.97, 240537624.48, 3212739.56, 158660.71, 29823493.26, 608650.06, 26447.15],
+          "Septiembre": [48785284.57, 271726918.71, 3536801.21, 220559.09, 43661904.47, 690829.72, 19362.37]
+        },
+        agrup: { corriente:[243790762.66,273499390.01,324049004.49], capital:[28592572.74,29982153.97,43882463.56], financiero:[562140.98,635097.21,710192.09] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Julio","Agosto","Septiembre"],
+        datos: {
+          "Julio":      [273759628.24, 37108042.20, 805182.45, 5669508.29, 41968181.05, 1348497.07,  661615.02, 1146996.39],
+          "Agosto":     [273702321.24, 41220098.80, 823588.53, 5788637.67, 42723975.48, 1348497.07,  661615.02, 1146996.39],
+          "Septiembre": [309581866.76, 48123553.53, 842650.61, 6105694.47, 55007460.57, 2201305.15,  811447.32, 1146996.39]
+        },
+        agrup: { corriente:[317342361.18,321534646.24,364653765.37], capital:[43316678.12,44072472.55,57208765.72], financiero:[1808611.41,1808611.41,1958443.71] }
+      }
+    },
+    "4T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Octubre","Noviembre","Diciembre"],
+        datos: {
+          "Octubre":   [56876142.60,  303408516.98, 3872210.89, 271917.56, 48449711.87,  780139.89,    19355.22],
+          "Noviembre": [66140601.59,  336572040.19, 4281942.61, 362250.63, 55140289.16,  864312.88,    24355.22],
+          "Diciembre": [138985218.72, 381793905.02, 4431608.90, 624544.42, 96231686.60,  947769.14, 3107802.02]
+        },
+        agrup: { corriente:[364156870.47,406994584.39,525210732.64], capital:[48721629.43,55502539.79,96856231.02], financiero:[799444.50,888668.10,4055571.16] }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Octubre","Noviembre","Diciembre"],
+        datos: {
+          "Octubre":   [341411963.10, 54154428.26,  987976.86,  6563613.45,  65816413.57, 2201305.15, 1020092.37, 1146996.39],
+          "Noviembre": [375000330.05, 61982359.79,  988732.67,  7555636.55,  74848602.68, 4354488.67, 1140446.56, 1319463.41],
+          "Diciembre": [433263073.59, 73179473.20, 1366933.01, 15323813.45, 100312809.66, 4354488.67, 1093814.30, 8961251.73]
+        },
+        agrup: { corriente:[403117981.67,445527059.06,523133293.25], capital:[68017718.72,79203091.35,104667298.33], financiero:[2230596.50,2459909.97,10055066.03] }
+      }
+    }
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
+//  FORMATO NUMÉRICO ESPAÑOL
+//  Punto de miles · coma decimal · siempre 2 decimales
+// ══════════════════════════════════════════════════════════════
+function fmtES(n) {
+    if (n === null || n === undefined) return '—';
+    const v = Number(n);
+    if (isNaN(v)) return '—';
+    return v.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtEje(v) {
+    const abs = Math.abs(v);
+    if (abs >= 1e6) return (v / 1e6).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' M';
+    if (abs >= 1e3) return (v / 1e3).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' K';
+    return v.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SELECTORES
+// ══════════════════════════════════════════════════════════════
+let chart       = null;
+let currentView = 'bar';
+
+const selYear = document.getElementById('year-select');
+const selTri  = document.getElementById('trimestre-select');
+const selTipo = document.getElementById('tipo-select');
+const toggles = document.querySelectorAll('.view-toggle');
+
+function getDS() {
+    const y = parseInt(selYear.value);
+    const t = selTri.value;
+    const p = selTipo.value;
+    return (DB[y] && DB[y][t] && DB[y][t][p]) ? DB[y][t][p] : null;
+}
+
+function titulo() {
+    const triTxt = selTri.options[selTri.selectedIndex].text;
+    const tipTxt = selTipo.value === 'ingresos'
+        ? 'Ingresos (derechos reconocidos)'
+        : 'Gastos (obligaciones reconocidas)';
+    return `${tipTxt} · ${triTxt} ${selYear.value}`;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TABLA DE DATOS
+// ══════════════════════════════════════════════════════════════
+function renderTable(ds) {
+    const triTxt = selTri.options[selTri.selectedIndex].text;
+    const tipTxt = selTipo.value === 'ingresos'
+        ? 'Ingresos — Derechos reconocidos'
+        : 'Gastos — Obligaciones reconocidas';
+    const labelOps = selTipo.value === 'ingresos'
+        ? ['Operaciones corrientes','Operaciones de capital','Operaciones financieras']
+        : ['Obligaciones corrientes','Obligaciones capital','Obligaciones financieras'];
+
+    document.getElementById('tableTitle').textContent =
+        `${tipTxt} · ${triTxt} ${selYear.value}`;
+    document.getElementById('tableSubtitle1').textContent =
+        selTipo.value === 'ingresos'
+            ? 'Derechos reconocidos por periodo — por capítulo'
+            : 'Obligaciones reconocidas por periodo — por capítulo';
+    document.getElementById('tableSubtitle2').textContent =
+        selTipo.value === 'ingresos'
+            ? 'Derechos reconocidos por periodo — por tipo de operación'
+            : 'Obligaciones reconocidas por periodo — por tipo de operación';
+
+    // ── TABLA 1: POR CAPÍTULO ──
+    document.getElementById('dataTableHead').innerHTML =
+        `<tr>
+          <th>Cap.</th>
+          <th>Descripción</th>
+          ${ds.meses.map(m => `<th class="num">${m}</th>`).join('')}
+        </tr>`;
+
+    document.getElementById('dataTableBody').innerHTML =
+        ds.capitulos.map((cap, ci) =>
+            `<tr>
+              <td><strong>${cap}</strong></td>
+              <td>${ds.nombres[ci]}</td>
+              ${ds.meses.map(m => {
+                  const v = ds.datos[m][ci];
+                  return `<td class="num${v < 0 ? ' neg' : ''}">${fmtES(v)}</td>`;
+              }).join('')}
+            </tr>`
+        ).join('');
+
+    const totales1 = ds.meses.map(m =>
+        ds.capitulos.reduce((s, _, ci) => s + (ds.datos[m][ci] || 0), 0)
+    );
+    document.getElementById('dataTableFoot').innerHTML =
+        `<tr>
+          <td>TOTAL</td><td></td>
+          ${totales1.map(t => `<td class="num">${fmtES(t)}</td>`).join('')}
+        </tr>`;
+
+    // ── TABLA 2: POR OPERACIÓN ──
+    document.getElementById('dataTableOpsHead').innerHTML =
+        `<tr>
+          <th>Mes</th>
+          ${labelOps.map(l => `<th class="num">${l}</th>`).join('')}
+          <th class="num">Total</th>
+        </tr>`;
+
+    document.getElementById('dataTableOpsBody').innerHTML =
+        ds.meses.map(m => {
+            const corr = ds.agrup.corriente[ds.meses.indexOf(m)];
+            const cap  = ds.agrup.capital[ds.meses.indexOf(m)];
+            const fin  = ds.agrup.financiero[ds.meses.indexOf(m)];
+            const tot  = corr + cap + fin;
+            return `<tr>
+              <td><strong>${m}</strong></td>
+              <td class="num">${fmtES(corr)}</td>
+              <td class="num${cap < 0 ? ' neg' : ''}">${fmtES(cap)}</td>
+              <td class="num${fin < 0 ? ' neg' : ''}">${fmtES(fin)}</td>
+              <td class="num">${fmtES(tot)}</td>
+            </tr>`;
+        }).join('');
+
+    // Totales ops (último mes = dato más reciente del trimestre)
+    const lastIdx = ds.meses.length - 1;
+    const tCorr = ds.agrup.corriente[lastIdx];
+    const tCap  = ds.agrup.capital[lastIdx];
+    const tFin  = ds.agrup.financiero[lastIdx];
+    document.getElementById('dataTableOpsFoot').innerHTML =
+        `<tr>
+          <td>${ds.meses[lastIdx]}</td>
+          <td class="num">${fmtES(tCorr)}</td>
+          <td class="num${tCap < 0 ? ' neg' : ''}">${fmtES(tCap)}</td>
+          <td class="num${tFin < 0 ? ' neg' : ''}">${fmtES(tFin)}</td>
+          <td class="num">${fmtES(tCorr + tCap + tFin)}</td>
+        </tr>`;
+}
+
+
+function render() {
+    const ds = getDS();
+
+    // Sin datos disponibles (ej. 2023, o 4T 2025)
+    if (!ds) {
+        // Limpiar tabla
+        document.getElementById('tableTitle').textContent = 'Datos no disponibles';
+        document.getElementById('tableSubtitle1').textContent = '';
+        document.getElementById('tableSubtitle2').textContent = '';
+        ['dataTableHead','dataTableBody','dataTableFoot',
+         'dataTableOpsHead','dataTableOpsBody','dataTableOpsFoot'].forEach(id => {
+            document.getElementById(id).innerHTML = '';
+        });
+        document.getElementById('dataTableBody').innerHTML =
+            `<tr><td colspan="10" style="text-align:center;padding:24px;color:#6c757d;font-style:italic;">
+              Los datos de ${selYear.value} — ${selTri.options[selTri.selectedIndex].text} aún no están publicados.
+            </td></tr>`;
+        // Limpiar gráfico
+        if (chart) { chart.destroy(); chart = null; }
+        return;
+    }
+
+    renderTable(ds);
+    if (chart) { chart.destroy(); chart = null; }
+    const container = document.querySelector('.chart-container');
+    container.style.height = '600px';
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    const cfgs = { bar: cfgBar, line: cfgLine };
+    chart = new Chart(ctx, (cfgs[currentView] || cfgBar)(ds));
+}
+
+// Barras agrupadas: eje X = capítulos, una barra por mes
+function cfgBar(ds) {
+    return {
+        type: 'bar',
+        data: {
+            labels: ds.nombres,
+            datasets: ds.meses.map((mes, mi) => ({
+                label: mes,
+                data: ds.capitulos.map((_, ci) => ds.datos[mes][ci]),
+                backgroundColor: UCM.sec[mi % UCM.sec.length] + 'CC',
+                borderColor:     UCM.sec[mi % UCM.sec.length],
+                borderWidth: 1.5,
+                borderRadius: 3
+            }))
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { font: { size: 13, weight: '600' }, padding: 16 } },
+                title:  { display: true, text: titulo(), font: { size: 17, weight: 'bold' }, padding: { bottom: 18 } },
+                tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmtES(c.parsed.y)} €` } }
+            },
+            scales: {
+                x: { ticks: { font: { size: 11 } } },
+                y: { beginAtZero: true, ticks: { callback: v => fmtEje(v), font: { size: 11 } } }
+            }
+        }
+    };
+}
+
+// Líneas: eje X = meses, una línea por capítulo
+function cfgLine(ds) {
+    return {
+        type: 'line',
+        data: {
+            labels: ds.meses,
+            datasets: ds.capitulos.map((cap, ci) => ({
+                label: ds.nombres[ci],
+                data:  ds.meses.map(mes => ds.datos[mes][ci]),
+                borderColor:     UCM.sec[ci % UCM.sec.length],
+                backgroundColor: UCM.sec[ci % UCM.sec.length] + '22',
+                borderWidth: 2.5,
+                pointRadius: 5,
+                pointBackgroundColor: UCM.sec[ci % UCM.sec.length],
+                tension: 0.35,
+                fill: false
+            }))
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { font: { size: 12 }, padding: 14 } },
+                title:  { display: true, text: 'Evolución mensual por capítulo — ' + titulo(), font: { size: 16, weight: 'bold' }, padding: { bottom: 18 } },
+                tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${fmtES(c.parsed.y)} €` } }
+            },
+            scales: {
+                x: { ticks: { font: { size: 12 } } },
+                y: { beginAtZero: true, ticks: { callback: v => fmtEje(v), font: { size: 11 } } }
+            }
+        }
+    };
+}
+
+
+// ══════════════════════════════════════════════════════════════
+//  DESCARGAS
+// ══════════════════════════════════════════════════════════════
+function descargar(contenido, nombre, mime) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([contenido], { type: mime }));
+    a.download = nombre;
+    a.click();
+}
+
+// CSV del trimestre seleccionado (separador ; para es-ES)
+function csvTrimestre() {
+    const ds   = getDS(); if (!ds) return;
+    const year = selYear.value;
+    const tri  = selTri.value;
+    const tipo = selTipo.value;
+
+    const cabecera = ['Capítulo', 'Descripción', ...ds.meses].join(';');
+    const filas = ds.capitulos.map((cap, ci) =>
+        [`"${cap}"`, `"${ds.nombres[ci]}"`, ...ds.meses.map(m => `"${fmtES(ds.datos[m][ci])}"`)]
+            .join(';')
+    );
+    const totales = ds.meses.map(m =>
+        fmtES(ds.capitulos.reduce((s, _, ci) => s + (ds.datos[m][ci] || 0), 0))
+    );
+    const filaTot = ['"TOTAL"', '""', ...totales.map(v => `"${v}"`)].join(';');
+
+    descargar(
+        '\uFEFF' + [cabecera, ...filas, '', filaTot].join('\r\n'),
+        `ejecucion-ucm-${year}-${tri}-${tipo}.csv`,
+        'text/csv;charset=utf-8'
+    );
+}
+
+// Excel del trimestre seleccionado
+function xlsxTrimestre() {
+    const ds   = getDS(); if (!ds) return;
+    const year = selYear.value;
+    const tri  = selTri.options[selTri.selectedIndex].text;
+    const tipo = selTipo.value === 'ingresos' ? 'Ingresos — Derechos reconocidos' : 'Gastos — Obligaciones reconocidas';
+
+    const th = 'background:#b71234;color:white;padding:8px 10px;font-family:Arial,sans-serif;font-size:10pt;font-weight:bold;border:1px solid #8b0d27;white-space:nowrap';
+    const td = 'padding:6px 10px;border:1px solid #dee2e6;font-family:Arial,sans-serif;font-size:10pt';
+    const tn = td + ';text-align:right';
+    const tt = td + ';font-weight:bold;background:#f0ece4';
+    const ttn= tt + ';text-align:right';
+
+    const filas = ds.capitulos.map((cap, ci) =>
+        `<tr>
+          <td style="${td}">${cap}</td>
+          <td style="${td}">${ds.nombres[ci]}</td>
+          ${ds.meses.map(m => {
+              const v = ds.datos[m][ci];
+              return `<td style="${tn}${v < 0 ? ';color:#b71234' : ''}">${fmtES(v)}</td>`;
+          }).join('')}
+        </tr>`
+    ).join('');
+
+    const totRow = `<tr>
+      <td style="${tt}">TOTAL</td><td style="${tt}"></td>
+      ${ds.meses.map(m => {
+          const t = ds.capitulos.reduce((s, _, ci) => s + (ds.datos[m][ci] || 0), 0);
+          return `<td style="${ttn}">${fmtES(t)}</td>`;
+      }).join('')}
+    </tr>`;
+
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head><meta charset="UTF-8"></head>
+<body>
+<h2 style="font-family:Arial,sans-serif;color:#b71234;font-size:14pt">${tipo} · ${tri} ${year}</h2>
+<p style="font-family:Arial,sans-serif;font-size:9pt;color:#6c757d;margin-bottom:10px">
+  Fuente: Portal de Transparencia — Universidad Complutense de Madrid.<br>
+  Valores del mes indicado (punto de miles, coma decimal).
+</p>
+<table border="0" cellspacing="0" cellpadding="0">
+  <thead><tr>
+    <th style="${th}">Cap.</th>
+    <th style="${th}">Descripción</th>
+    ${ds.meses.map(m => `<th style="${th}">${m}</th>`).join('')}
+  </tr></thead>
+  <tbody>${filas}${totRow}</tbody>
+</table>
+</body></html>`;
+
+    descargar(
+        '\uFEFF' + html,
+        `ejecucion-ucm-${year}-${selTri.value}-${selTipo.value}.xlsx`,
+        'application/vnd.ms-excel;charset=utf-8'
+    );
+}
+
+// CSV todos los trimestres del año
+function csvTodos() {
+    const year = parseInt(selYear.value);
+    const tipo = selTipo.value;
+    const anio = DB[year]; if (!anio) return;
+
+    const filas = [['Trimestre','Mes','Capítulo','Descripción','Importe (€)'].join(';')];
+    Object.keys(anio).forEach(tri => {
+        const ds = anio[tri][tipo]; if (!ds) return;
+        ds.meses.forEach(mes => {
+            ds.capitulos.forEach((cap, ci) => {
+                filas.push([
+                    `"${tri}"`, `"${mes}"`, `"${cap}"`,
+                    `"${ds.nombres[ci]}"`, `"${fmtES(ds.datos[mes][ci])}"`
+                ].join(';'));
+            });
+        });
+    });
+
+    descargar(
+        '\uFEFF' + filas.join('\r\n'),
+        `ejecucion-ucm-${year}-todos-trimestres-${tipo}.csv`,
+        'text/csv;charset=utf-8'
+    );
+}
+
+// ══════════════════════════════════════════════════════════════
+//  EVENTOS
+// ══════════════════════════════════════════════════════════════
+selYear.addEventListener('change', render);
+selTri.addEventListener('change',  render);
+selTipo.addEventListener('change', render);
+
+toggles.forEach(btn => {
+    btn.addEventListener('click', () => {
+        toggles.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentView = btn.dataset.view;
+        render();
+    });
+});
+document.getElementById('btnCSV').addEventListener('click',      csvTrimestre);
+document.getElementById('btnXLSX').addEventListener('click',     xlsxTrimestre);
+document.getElementById('btnCSVTodos').addEventListener('click', csvTodos);
+
+// Arranque
+render();
+</script>
+</body>
+</html>
