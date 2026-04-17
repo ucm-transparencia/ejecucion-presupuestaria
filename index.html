@@ -30,7 +30,6 @@
             min-height: 100vh;
         }
 
-        /* ── HERO — mismo patrón que los demás archivos ── */
         .hero-wrap,
         .page-wrap {
             max-width: calc(var(--max) + 40px);
@@ -89,7 +88,6 @@
             line-height: 1.4;
         }
 
-        /* ── CONTENIDO PRINCIPAL ── */
         .page-wrap { padding-top: 0; padding-bottom: 60px; }
 
         .container {
@@ -101,7 +99,6 @@
             box-shadow: var(--sh-s);
         }
 
-        /* ── CONTROLES ── */
         .controls {
             padding: 24px 24px 20px;
             background: #f8f9fa;
@@ -160,7 +157,6 @@
         .view-toggle:hover  { border-color: var(--ucm); color: var(--ucm); background: var(--ucm-ll); }
         .view-toggle.active { background: var(--ucm); color: #fff; border-color: var(--ucm); box-shadow: 0 2px 10px rgba(157,34,53,.25); }
 
-        /* ── DESCARGAS ── */
         .download-section {
             padding: 16px 24px;
             background: #fff;
@@ -202,7 +198,6 @@
         .download-btn:active { transform: translateY(0); }
         .download-btn svg    { width: 14px; height: 14px; }
 
-        /* ── TABLA ── */
         .data-table-section {
             padding: 0 24px 20px;
             background: #f8f9fa;
@@ -238,9 +233,7 @@
             font-size: .82rem;
             background: white;
         }
-        .data-table thead {
-            background: var(--ucm);
-        }
+        .data-table thead { background: var(--ucm); }
         .data-table thead th {
             padding: 10px 14px;
             color: white;
@@ -276,7 +269,6 @@
         }
         .data-table tfoot tr td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
-        /* ── GRÁFICO ── */
         .chart-container {
             padding: 24px;
             position: relative;
@@ -284,7 +276,6 @@
             background: #fff;
         }
 
-        /* ── FOOTER ── */
         .footer {
             background: var(--blanco);
             border-top: 1px solid var(--gris-b);
@@ -307,7 +298,6 @@
 </head>
 <body>
 
-<!-- HERO -->
 <div class="hero-wrap">
     <header class="hero" id="inicio">
         <div class="hero-inner">
@@ -320,7 +310,6 @@
     </header>
 </div>
 
-<!-- CONTENIDO -->
 <div class="page-wrap">
 <div class="container">
 
@@ -329,7 +318,8 @@
             <div class="control-item">
                 <label for="year-select">Año</label>
                 <select id="year-select">
-                    <option value="2025" selected>2025</option>
+                    <option value="2026" selected>2026</option>
+                    <option value="2025">2025</option>
                     <option value="2024">2024</option>
                     <option value="2023">2023</option>
                     <option value="2022">2022</option>
@@ -338,9 +328,9 @@
             <div class="control-item">
                 <label for="trimestre-select">Trimestre</label>
                 <select id="trimestre-select">
-                    <option value="1T">1.er Trimestre</option>
+                    <option value="1T" selected>1.er Trimestre</option>
                     <option value="2T">2.º Trimestre</option>
-                    <option value="3T" selected>3.er Trimestre</option>
+                    <option value="3T">3.er Trimestre</option>
                     <option value="4T">4.º Trimestre</option>
                 </select>
             </div>
@@ -409,13 +399,10 @@
         <a href="https://www.ucm.es/portaldetransparencia" target="_blank" rel="noopener">Portal de Transparencia — Universidad Complutense de Madrid</a>
     </div>
 
-</div><!-- /.container -->
-</div><!-- /.page-wrap -->
+</div>
+</div>
 
 <script>
-// ══════════════════════════════════════════════════════════════
-//  PALETA UCM
-// ══════════════════════════════════════════════════════════════
 const UCM = {
     rojo:   '#9d2235',
     gris:   '#979492',
@@ -424,9 +411,45 @@ const UCM = {
 };
 
 // ══════════════════════════════════════════════════════════════
-//  BASE DE DATOS
+//  BASE DE DATOS — incluye 2026 1T (Derechos y Obligaciones)
 // ══════════════════════════════════════════════════════════════
 const DB = {
+  // ── 2026 ──────────────────────────────────────────────────
+  2026: {
+    "1T": {
+      ingresos: {
+        capitulos: ["III","IV","V","VI","VII","VIII","IX"],
+        nombres:   ["Cap. III","Cap. IV","Cap. V","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [2577000.00,   33513000.00,  1760000.00,       0.00,   181000.00,  74000.00, 0.00],
+          "Febrero": [6747000.00,   68953000.00,  2195000.00,  105000.00,  2312000.00, 154000.00, 0.00],
+          "Marzo":   [9689352.32,  102179372.58,  2531043.96,  106706.80,  9403214.29, 157172.37, 0.00]
+        },
+        agrup: {
+          corriente:  [37850000.00,  77895000.00, 114399768.86],
+          capital:    [  181000.00,   2417000.00,   9509921.09],
+          financiero: [   74000.00,    154000.00,    157172.37]
+        }
+      },
+      gastos: {
+        capitulos: ["I","II","III","IV","VI","VII","VIII","IX"],
+        nombres:   ["Cap. I","Cap. II","Cap. III","Cap. IV","Cap. VI","Cap. VII","Cap. VIII","Cap. IX"],
+        meses: ["Enero","Febrero","Marzo"],
+        datos: {
+          "Enero":   [36123312.73,   185207.64,  13721.68,  129831.14,   31980.20,  252923.06, 200000.00,    300.00],
+          "Febrero": [72224685.72,  6279261.88,  47066.55,  502869.54,  436955.89, 1731851.54, 200000.00,  20000.00],
+          "Marzo":   [108691890.55,10868905.18, 610803.20, 1658838.39, 8986043.24, 1731551.54, 200000.00,  63745.58]
+        },
+        agrup: {
+          corriente:  [36452073.19,  79053883.69, 121830437.32],
+          capital:    [  284903.26,   2168807.43,  10717594.78],
+          financiero: [  200300.00,    220000.00,    263745.58]
+        }
+      }
+    }
+  },
+  // ── 2025 ──────────────────────────────────────────────────
   2025: {
     "1T": {
       ingresos: {
@@ -501,6 +524,7 @@ const DB = {
       }
     }
   },
+  // ── 2024 ──────────────────────────────────────────────────
   2024: {
     "1T": {
       ingresos: {
@@ -599,6 +623,7 @@ const DB = {
       }
     }
   },
+  // ── 2023 ──────────────────────────────────────────────────
   2023: {
     "1T": {
       ingresos: {
@@ -697,6 +722,7 @@ const DB = {
       }
     }
   },
+  // ── 2022 ──────────────────────────────────────────────────
   2022: {
     "1T": {
       ingresos: {
